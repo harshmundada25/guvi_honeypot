@@ -345,7 +345,7 @@ def honeypot():
         data = request.get_json(silent=True)
 
         # Handle GUVI tester empty-body request
-        if not data:
+        if not data or "message" not in data:
             return jsonify({
                 "status": "success",
                 "message": "Honeypot API reachable and authenticated successfully"
