@@ -328,6 +328,12 @@ def extract_intelligence(history: List[Dict], current_message: str) -> Dict:
     }
 
 # ===================== API ENDPOINT =====================
+@app.route("/", methods=["GET", "POST"])
+def root_health_check():
+    return jsonify({
+        "status": "success",
+        "message": "Honeypot service is up and running"
+    }), 200
 
 @app.route("/api/honeypot", methods=["POST"])
 def honeypot():
