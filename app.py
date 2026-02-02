@@ -328,8 +328,18 @@ def extract_intelligence(history: List[Dict], current_message: str) -> Dict:
     }
 
 # ===================== API ENDPOINT =====================
+@app.route("/", methods=["GET", "POST", "HEAD", "OPTIONS"])
+def root_health_check():
+    return jsonify({
+        "status": "success",
+        "message": "Honeypot service is up and running"
+    }), 200
+
+
 @app.route("/api/honeypot", methods=["GET", "POST", "HEAD", "OPTIONS"])
 def honeypot():
+    """Main honeypot endpoint for scam detection and agentic engagement"""
+
     # API Key validation
     api_key = request.headers.get("x-api-key")
     if api_key != API_KEY:
@@ -338,43 +348,40 @@ def honeypot():
             "message": "Invalid API key"
         }), 401
 
-    # ✅ GUVI tester compatibility mode
+    # ✅ GUVI tester safety: handle non-JSON / empty / probe requests
     if not request.is_json:
         return jsonify({
             "status": "success",
-            "message": "Honeypot API reachable, authenticated, and responding correctly"
+            "message": "Honeypot API reachable and authenticated successfully"
         }), 200
 
-    data = request.get_json(silent=True)
-    if not isinstance(data, dict) or "message" not in data:
-        return jsonify({
-            "status": "success",
-            "message": "Honeypot API reachable, authenticated, and responding correctly"
-        }), 200
+    try:
+        data = request.get_json(silent=True)
 
-        
-        # Extract request fields
+        if not isinstance(data, dict) or "message" not in data:
+            return jsonify({
+                "status": "success",
+                "message": "Honeypot API reachable and authenticated successfully"
+            }), 200
+
+        # -------- REAL HONEYPOT LOGIC (UNCHANGED) --------
+
         session_id = data.get("sessionId", "unknown")
         message = data.get("message", {})
         message_text = message.get("text", "")
         history = data.get("conversationHistory", [])
-        metadata = data.get("metadata", {})
-        
+
         print(f"\n[INFO] Processing message for session: {session_id}")
         print(f"    Sender: {message.get('sender', 'unknown')}")
         print(f"    History length: {len(history)}")
-        
-        # Detect scam intent
+
         start_time = time.time()
         scam_detected = conversation_is_scam(message_text, history)
-        
-        # Generate agent reply (pass latest scammer message for context)
         agent_response = agent_reply(scam_detected, len(history), message_text)
-        
+
         engagement_duration = int(time.time() - start_time)
-        total_messages = len(history) + 1  # Include current message
-        
-        # Prepare base response
+        total_messages = len(history) + 1
+
         response_payload = {
             "status": "success",
             "sessionId": session_id,
@@ -386,48 +393,40 @@ def honeypot():
             "agentReply": agent_response,
             "historyCount": len(history)
         }
-        
-        # Mandatory callback to GUVI evaluation endpoint
+
         if scam_detected and total_messages >= 4:
-            print(f"\n[INFO] Sending callback to GUVI for session {session_id}...")
-            
             intelligence = extract_intelligence(history, message_text)
-            
-            callback_payload = {
-                "sessionId": session_id,
-                "scamDetected": True,
-                "totalMessagesExchanged": total_messages,
-                "extractedIntelligence": intelligence,
-                "agentNotes": "Detected using tiered signal scoring and Groq semantic analysis. "
-                             "Agent engaged scammer and extracted actionable intelligence."
-            }
-            
-            # Add intelligence to response
+
             response_payload["extractedIntelligence"] = intelligence
-            response_payload["agentNotes"] = callback_payload["agentNotes"]
-            
+            response_payload["agentNotes"] = (
+                "Detected using tiered signal scoring and Groq semantic analysis. "
+                "Agent engaged scammer and extracted actionable intelligence."
+            )
+
             try:
-                callback_response = requests.post(
+                requests.post(
                     "https://hackathon.guvi.in/api/updateHoneyPotFinalResult",
-                    json=callback_payload,
+                    json={
+                        "sessionId": session_id,
+                        "scamDetected": True,
+                        "totalMessagesExchanged": total_messages,
+                        "extractedIntelligence": intelligence,
+                        "agentNotes": response_payload["agentNotes"]
+                    },
                     timeout=5
                 )
-                print(f"[OK] Callback sent successfully (Status: {callback_response.status_code})")
-            except requests.exceptions.Timeout:
-                print("[WARN] Callback timeout (5s)")
-            except requests.exceptions.ConnectionError as e:
-                print(f"[WARN] Callback connection error: {e}")
             except Exception as e:
-                print(f"[WARN] Callback failed: {e}")
-        
+                print(f"[WARN] Callback issue: {e}")
+
         return jsonify(response_payload), 200
-    
+
     except Exception as e:
         print(f"[ERROR] Honeypot endpoint error: {e}")
         return jsonify({
             "status": "error",
-            "message": str(e)
+            "message": "Internal server error"
         }), 500
+
 
 # ===================== SERVER INITIALIZATION =====================
 
