@@ -143,7 +143,7 @@ def test_high_confidence_scam():
         "conversationHistory": []
     }
     
-    return test_api("High confidence scam (score ≥ 4)", payload)
+    return test_api("High confidence scam (score >= 4)", payload)
 
 def test_medium_confidence_scam():
     """Test 3: Medium Confidence Scam with History"""
