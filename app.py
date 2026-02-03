@@ -67,6 +67,7 @@ def honeypot():
     if not message_text:
         response_payload = {
             "status": "success",
+            "message": "Processed successfully",
             "sessionId": session_id,
             "scamDetected": False,
             "detectionConfidence": 0.0,
@@ -89,6 +90,7 @@ def honeypot():
 
     response_payload = {
         "status": "success",
+        "message": "Processed successfully",
         "sessionId": session_id,
         "scamDetected": scam_detected,
         "detectionConfidence": analysis["confidence"],
