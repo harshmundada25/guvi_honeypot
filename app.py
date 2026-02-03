@@ -63,6 +63,20 @@ def honeypot():
     message_text = (message.get("text") or "").strip()
     sender = message.get("sender", "unknown")
 
+    # If no message text, return a benign success response (tester safety).
+    if not message_text:
+        response_payload = {
+            "status": "success",
+            "sessionId": session_id,
+            "scamDetected": False,
+            "detectionConfidence": 0.0,
+            "detectionSignals": {"mlProbability": 0.0, "heuristicScore": 0, "legitimacyScore": 0.0},
+            "engagementMetrics": {"engagementDurationSeconds": 0, "totalMessagesExchanged": len(history) + 1},
+            "agentReply": "Thanks for reaching out; everything looks fine on your account.",
+            "historyCount": len(history),
+        }
+        return jsonify(response_payload), 200
+
     print(f"\n[HONEYPOT] Session={session_id} Sender={sender} History={len(history)}")
 
     start_time = time.time()
