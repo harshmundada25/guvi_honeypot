@@ -11,7 +11,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 BASE_DIR = Path(__file__).resolve().parent
 ARTIFACTS_DIR = BASE_DIR / "artifacts"
 MODEL_FILE = ARTIFACTS_DIR / "scam_model.joblib"
-MODEL_VERSION = "v2"
+MODEL_VERSION = "v3"
 
 
 def _ensure_artifacts_dir() -> None:

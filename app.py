@@ -33,6 +33,20 @@ def _service_ok():
     return jsonify({"status": "success", "message": "Honeypot service is up and running"}), 200
 
 
+def _default_payload(session_id: str = "unknown", history_len: int = 0) -> dict:
+    return {
+        "status": "success",
+        "message": "Processed successfully",
+        "sessionId": session_id,
+        "scamDetected": False,
+        "detectionConfidence": 0.0,
+        "detectionSignals": {"mlProbability": 0.0, "heuristicScore": 0, "legitimacyScore": 1.0},
+        "engagementMetrics": {"engagementDurationSeconds": 0, "totalMessagesExchanged": history_len + 1},
+        "agentReply": "Thanks for reaching out; everything looks fine on your account.",
+        "historyCount": history_len,
+    }
+
+
 @app.route("/", methods=["GET", "HEAD", "OPTIONS"])
 @app.route("/health", methods=["GET", "HEAD", "OPTIONS"])
 def health():
@@ -42,7 +56,10 @@ def health():
 @app.route("/api/honeypot", methods=["GET", "POST", "OPTIONS"])
 def honeypot():
     if request.method != "POST":
-        return _service_ok()
+        api_key = request.headers.get("x-api-key")
+        if api_key and api_key != API_KEY:
+            return jsonify({"status": "error", "message": "Invalid API key"}), 401
+        return jsonify(_default_payload()), 200
 
     api_key = request.headers.get("x-api-key")
     if api_key != API_KEY:
@@ -65,18 +82,7 @@ def honeypot():
 
     # If no message text, return a benign success response (tester safety).
     if not message_text:
-        response_payload = {
-            "status": "success",
-            "message": "Processed successfully",
-            "sessionId": session_id,
-            "scamDetected": False,
-            "detectionConfidence": 0.0,
-            "detectionSignals": {"mlProbability": 0.0, "heuristicScore": 0, "legitimacyScore": 0.0},
-            "engagementMetrics": {"engagementDurationSeconds": 0, "totalMessagesExchanged": len(history) + 1},
-            "agentReply": "Thanks for reaching out; everything looks fine on your account.",
-            "historyCount": len(history),
-        }
-        return jsonify(response_payload), 200
+        return jsonify(_default_payload(session_id, len(history))), 200
 
     print(f"\n[HONEYPOT] Session={session_id} Sender={sender} History={len(history)}")
 
