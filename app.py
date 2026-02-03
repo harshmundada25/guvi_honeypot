@@ -48,10 +48,8 @@ def honeypot():
     if api_key != API_KEY:
         return jsonify({"status": "error", "message": "Invalid API key"}), 401
 
-    if not request.is_json:
-        return _service_ok()
-
-    data = request.get_json(silent=True) or {}
+    # Be permissive: try to parse JSON even if Content-Type is missing/wrong.
+    data = request.get_json(silent=True, force=True) or {}
     if not isinstance(data, dict) or "message" not in data:
         return _service_ok()
 
