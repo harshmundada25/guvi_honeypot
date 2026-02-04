@@ -9,7 +9,10 @@ _sent_sessions: set[str] = set()
 def _post_callback(url: str, payload: Dict) -> None:
     try:
         resp = requests.post(url, json=payload, timeout=5)
-        print(f"[CALLBACK] Status {resp.status_code}")
+        if resp.status_code == 200:
+            print(f"[CALLBACK] Status {resp.status_code}")
+        else:
+            print(f"[CALLBACK] Status {resp.status_code} Body={resp.text[:200]}")
     except Exception as exc:
         print(f"[CALLBACK] Failed: {exc}")
 
@@ -25,4 +28,3 @@ def send_callback_async(url: str, payload: Dict, session_id: Optional[str] = Non
     thread = threading.Thread(target=_post_callback, args=(url, payload), daemon=True)
     thread.start()
     return True
-

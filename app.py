@@ -44,6 +44,8 @@ def _default_payload(session_id: str = "unknown", history_len: int = 0) -> dict:
         "engagementMetrics": {"engagementDurationSeconds": 0, "totalMessagesExchanged": history_len + 1},
         "agentReply": "Thanks for reaching out; everything looks fine on your account.",
         "historyCount": history_len,
+        "agentNotes": "",
+        "callbackSent": False,
         "extractedIntelligence": {
             "bankAccounts": [],
             "upiIds": [],
@@ -82,9 +84,21 @@ def honeypot():
         except Exception:
             data = {}
 
-        session_id = data.get("sessionId", "unknown")
-        message = data.get("message", {}) or {}
-        history = data.get("conversationHistory", []) or []
+        # Normalize fields regardless of shape the portal sends.
+        session_id = data.get("sessionId") or data.get("sessionID") or data.get("session_id") or "unknown"
+
+        raw_message = data.get("message", {}) or data.get("body") or data.get("payload") or {}
+        if isinstance(raw_message, str):
+            raw_message = {"text": raw_message}
+        message = raw_message if isinstance(raw_message, dict) else {}
+
+        history = (
+            data.get("conversationHistory")
+            or data.get("history")
+            or data.get("messages")
+            or data.get("conversation")
+            or []
+        ) or []
         if not isinstance(history, list):
             history = []
 
@@ -95,6 +109,13 @@ def honeypot():
             or data.get("body")
             or ""
         ).strip()
+
+        # Fallback: if still empty, try last history scammer text.
+        if not message_text and history:
+            try:
+                message_text = str(history[-1].get("text", "")).strip()
+            except Exception:
+                message_text = ""
         sender = message.get("sender", "unknown")
 
         # If no text, return default payload
@@ -129,6 +150,8 @@ def honeypot():
             },
             "agentReply": agent_reply,
             "historyCount": len(history),
+            "agentNotes": "",
+            "callbackSent": False,
             "extractedIntelligence": {
                 "bankAccounts": [],
                 "upiIds": [],
@@ -138,7 +161,7 @@ def honeypot():
             },
         }
 
-        if scam_detected and total_messages >= MIN_MESSAGES_FOR_CALLBACK:
+        if scam_detected:
             intelligence = extract_intelligence(history, message_text)
             response_payload["extractedIntelligence"] = intelligence
             response_payload["agentNotes"] = (
@@ -146,14 +169,31 @@ def honeypot():
                 "Agent engaged scammer to extract intelligence."
             )
 
-            callback_payload = {
-                "sessionId": session_id,
-                "scamDetected": True,
-                "totalMessagesExchanged": total_messages,
-                "extractedIntelligence": intelligence,
-                "agentNotes": response_payload["agentNotes"],
-            }
-            send_callback_async(CALLBACK_URL, callback_payload, session_id=session_id)
+            if total_messages >= MIN_MESSAGES_FOR_CALLBACK:
+                callback_payload = {
+                    "status": "success",
+                    "message": "Processed successfully",
+                    "sessionId": session_id,
+                    "session_id": session_id,
+                    "scamDetected": True,
+                    "isScam": True,
+                    "detectionConfidence": float(analysis["confidence"]),
+                    "detection_confidence": float(analysis["confidence"]),
+                    "detectionSignals": response_payload["detectionSignals"],
+                    "detection_signals": response_payload["detectionSignals"],
+                    "engagementMetrics": response_payload["engagementMetrics"],
+                    "engagement_metrics": response_payload["engagementMetrics"],
+                    "agentReply": agent_reply,
+                    "agentNotes": response_payload["agentNotes"],
+                    "totalMessagesExchanged": total_messages,
+                    "total_messages_exchanged": total_messages,
+                    "historyCount": len(history),
+                    "extractedIntelligence": intelligence,
+                    "extracted_intelligence": intelligence,
+                    "result": response_payload,
+                }
+                send_callback_async(CALLBACK_URL, callback_payload, session_id=session_id)
+                response_payload["callbackSent"] = True
 
         return jsonify(response_payload), 200
     except Exception as exc:
