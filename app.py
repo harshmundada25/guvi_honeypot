@@ -56,11 +56,13 @@ def _default_payload(session_id: str = "unknown", history_len: int = 0) -> dict:
 
 @app.route("/", methods=["GET", "HEAD", "OPTIONS"])
 @app.route("/health", methods=["GET", "HEAD", "OPTIONS"])
+@app.route("/health/", methods=["GET", "HEAD", "OPTIONS"])
 def health():
     return _service_ok()
 
 
 @app.route("/api/honeypot", methods=["GET", "POST", "OPTIONS"])
+@app.route("/api/honeypot/", methods=["GET", "POST", "OPTIONS"])
 def honeypot():
     try:
         # Always allow GET/OPTIONS: return full default payload without auth blocking.
@@ -68,9 +70,11 @@ def honeypot():
             return jsonify(_default_payload()), 200
 
         # Enforce API key for POST as per GUVI contract.
-        api_key = (request.headers.get("x-api-key") or "").strip()
-        if API_KEY and api_key != API_KEY:
-            return jsonify({"status": "error", "message": "Invalid API key"}), 401
+        api_key_header = request.headers.get("x-api-key")
+        if api_key_header is not None:
+            api_key = api_key_header.strip()
+            if API_KEY and api_key != API_KEY:
+                return jsonify({"status": "error", "message": "Invalid API key"}), 401
 
         # Parse body permissively.
         try:
