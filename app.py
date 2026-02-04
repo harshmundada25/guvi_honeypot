@@ -67,10 +67,10 @@ def honeypot():
         if request.method != "POST":
             return jsonify(_default_payload()), 200
 
-        # Do not block on API key; accept any key for tester safety.
-        # api_key = request.headers.get("x-api-key")
-        # if API_KEY and api_key and api_key != API_KEY:
-        #     return jsonify(_default_payload()), 200
+        # Enforce API key for POST as per GUVI contract.
+        api_key = (request.headers.get("x-api-key") or "").strip()
+        if API_KEY and api_key != API_KEY:
+            return jsonify({"status": "error", "message": "Invalid API key"}), 401
 
         # Parse body permissively.
         try:

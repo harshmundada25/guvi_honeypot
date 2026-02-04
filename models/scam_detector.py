@@ -264,6 +264,12 @@ class ScamDetector:
 
         if safe_override:
             scam_confidence = round(min(scam_confidence, 0.15), 3)
+            is_scam = False
+
+        # Extra guard: low-signal messages (no heuristics) need higher ML probability to be scams.
+        if heuristic <= 1 and ml_proba < 0.65:
+            is_scam = False
+            scam_confidence = round(min(scam_confidence, 0.2), 3)
 
         return {
             "is_scam": bool(is_scam),
