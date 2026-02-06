@@ -56,10 +56,15 @@ def _default_payload(session_id: str = "unknown", history_len: int = 0) -> dict:
     }
 
 
-@app.route("/", methods=["GET", "HEAD", "OPTIONS"])
+@app.route("/", methods=["GET", "HEAD", "OPTIONS", "POST"])
 @app.route("/health", methods=["GET", "HEAD", "OPTIONS"])
 @app.route("/health/", methods=["GET", "HEAD", "OPTIONS"])
 def health():
+    # GUVI portal may POST directly to the base URL. Route those requests
+    # to the honeypot handler so we still return valid JSON instead of a 405
+    # HTML page (which would break their JSON parser).
+    if request.method == "POST":
+        return honeypot()
     return _service_ok()
 
 
@@ -149,6 +154,7 @@ def honeypot():
                 "totalMessagesExchanged": total_messages,
             },
             "agentReply": agent_reply,
+            "reply": agent_reply,  # Alias for GUVI portal contract
             "historyCount": len(history),
             "agentNotes": "",
             "callbackSent": False,
