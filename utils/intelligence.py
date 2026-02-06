@@ -16,10 +16,12 @@ def extract_intelligence(history: List[Dict], current_message: str) -> Dict:
     full_text = _collect_text(history, current_message)
     text_l = full_text.lower()
 
-    bank_accounts = re.findall(r"\b\d{4}-\d{4}-\d{4}\b|\b\d{9,18}\b", full_text)
+    # Accounts: prefer 12-18 digit spans or 4-4-4/4-4-5 grouped forms; avoid 10-digit phones.
+    bank_accounts = re.findall(r"\b\d{4}-\d{4}-\d{4,5}\b|\b\d{12,18}\b", full_text)
     upi_ids = re.findall(r"\b[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\b", full_text)
     phishing_links = re.findall(r"https?://[^\s]+", full_text)
-    phone_numbers = re.findall(r"\+91\d{10}|\b[6-9]\d{9}\b", full_text)
+    # Phones: allow +91 with optional separators and bare 10-digit Indian numbers.
+    phone_numbers = re.findall(r"\+?91[- ]?\d{10}|\b[6-9]\d{9}\b", full_text)
 
     suspicious_keywords_list = [
         "urgent",
@@ -52,4 +54,3 @@ def extract_intelligence(history: List[Dict], current_message: str) -> Dict:
         "phoneNumbers": sorted(set(phone_numbers)),
         "suspiciousKeywords": sorted(set(suspicious_keywords)),
     }
-
