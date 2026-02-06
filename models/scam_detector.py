@@ -52,6 +52,8 @@ def _heuristic_score(text: str) -> int:
         text_l,
     ):
         score += 1
+    if _contains(["otp", "pin", "upi pin"], text_l):
+        score += 2
     if _contains(["prize", "reward", "lottery", "cashback", "free", "offer", "won", "bonus"], text_l):
         score += 3
     if re.search(r"https?://", text_l):
@@ -67,7 +69,7 @@ def _custom_feature_row(text: str) -> List[float]:
     financial_words = ["bank", "account", "payment", "transfer", "refund", "upi", "credit", "debit"]
     action_words = ["restore", "reactivate", "verify", "confirm", "submit", "update", "click", "login", "respond"]
     reward_words = ["prize", "reward", "lottery", "cashback", "free", "offer", "won", "bonus"]
-    threat_words = ["blocked", "suspended", "deactivated", "limited", "closing", "blacklist"]
+    threat_words = ["blocked", "suspended", "deactivated", "limited", "closing", "blacklist", "otp", "pin"]
     legitimacy_words = [
         "otp",
         "one time password",
@@ -211,8 +213,6 @@ class ScamDetector:
         safe_patterns = [
             "scheduled maintenance",
             "maintenance",
-            "otp",
-            "one time password",
             "debited",
             "credited",
             "available balance",
